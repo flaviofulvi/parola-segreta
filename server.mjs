@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { valuta } from './regole.mjs';
+import { valuta, controlla } from './regole.mjs';
 const porta = process.env.PORTA;
 const segreta = 'parco';
 function rispondi(richiesta, risposta) {
@@ -13,7 +13,13 @@ risposta.end('Qui Parola segreta\n');
 risposta.end('Indovina la parola di cinque lettere.\n');
 } else if (percorso === '/tenta') {
 const parola = indirizzo.searchParams.get('parola');
+const errore = controlla(parola);
+if (errore !== '') {
+risposta.statusCode = 400;
+risposta.end(errore + '\n');
+} else {
 risposta.end(valuta(parola, segreta) + '\n');
+}
 } else {
 risposta.statusCode = 404;
 risposta.end('Indirizzo sconosciuto\n');

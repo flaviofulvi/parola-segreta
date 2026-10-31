@@ -1,2 +1,7 @@
+const segreta = 'parco';
 const tentativo = process.argv[2];
-console.log('Hai scritto:', tentativo);
+if (tentativo === segreta) {
+console.log('Indovinata');
+} else {
+console.log('Non è questa');
+}

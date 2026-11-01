@@ -23,3 +23,12 @@ Risposta 201, oppure 400 o 404.
 - tentativo : parte a ogni parola proposta, da chiunque. Contiene nome ed esito.
 - vittoria : parte quando una parola viene indovinata. Contiene nome e tentativi.
 - ingresso : parte quando un giocatore fa l'accesso. Contiene nome.
+
+## Come avviarlo
+
+Si copia il repository, poi si eseguono gli altri comandi dentro la cartella copiata:
+
+    git clone https://github.com/flaviofulvi/parola-segreta.git
+    npm install
+    node crea-db.mjs
+    node --watch server.mjs

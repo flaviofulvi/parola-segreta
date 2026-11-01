@@ -1,7 +1,10 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import { controlla } from './regole.mjs';
-import { creaPartita, trovaPartita, aggiungiTentativo, parolaEsiste } from './archivio.mjs';
+import {
+  creaPartita, trovaPartita, aggiungiTentativo, parolaEsiste,
+  apriSessione, giocatoreDellaSessione, classifica
+} from './archivio.mjs';
 import { leggiCorpo } from './corpo.mjs';
 
 const porta = process.env.PORTA;
@@ -14,6 +17,29 @@ function inviaJson(risposta, codice, dati) {
 
 function descrivi(partita) {
   return { id: partita.id, tentativi: partita.tentativi, finita: partita.finita };
+}
+
+function codiceSessione(richiesta) {
+  const cookie = richiesta.headers.cookie || '';
+  for (const pezzo of cookie.split('; ')) {
+    if (pezzo.startsWith('sessione=')) {
+      return pezzo.slice(9);
+    }
+  }
+  return '';
+}
+
+function accesso(richiesta, risposta) {
+  leggiCorpo(richiesta, function (dati) {
+    if (typeof dati.nome !== 'string' || dati.nome.trim() === '' || dati.nome.length > 20) {
+      inviaJson(risposta, 400, { errore: 'Scrivi un nome, di venti caratteri al massimo' });
+    } else {
+      const nome = dati.nome.trim();
+      const codice = apriSessione(nome);
+      risposta.setHeader('Set-Cookie', 'sessione=' + codice + '; HttpOnly');
+      inviaJson(risposta, 201, { nome: nome });
+    }
+  });
 }
 
 function nuovoTentativo(richiesta, risposta, partita) {
@@ -38,19 +64,29 @@ function rispondi(richiesta, risposta) {
   const percorso = indirizzo.pathname;
   const metodo = richiesta.method;
   const pezzi = percorso.split('/');
+  const giocatore = giocatoreDellaSessione(codiceSessione(richiesta));
 
   if (metodo === 'GET' && percorso === '/') {
     risposta.setHeader('Content-Type', 'text/html; charset=utf-8');
     risposta.end(fs.readFileSync('pubblico/index.html'));
-  } else if (metodo === 'GET' && percorso === '/parole') {
-    const cerca = indirizzo.searchParams.get('cerca');
-    inviaJson(risposta, 200, { parola: cerca, presente: parolaEsiste(cerca) });
+  } else if (metodo === 'POST' && percorso === '/accesso') {
+    accesso(richiesta, risposta);
+  } else if (metodo === 'GET' && percorso === '/classifica') {
+    inviaJson(risposta, 200, classifica());
+  } else if (metodo === 'GET' && percorso === '/io') {
+    if (giocatore === null) {
+      inviaJson(risposta, 200, { nome: null });
+    } else {
+      inviaJson(risposta, 200, { nome: giocatore.nome });
+    }
+  } else if (giocatore === null) {
+    inviaJson(risposta, 401, { errore: 'Non hai fatto l\'accesso' });
   } else if (metodo === 'POST' && percorso === '/partite') {
-    const partita = creaPartita();
+    const partita = creaPartita(giocatore);
     inviaJson(risposta, 201, descrivi(partita));
   } else if (pezzi.length >= 3 && pezzi[1] === 'partite') {
     const partita = trovaPartita(Number(pezzi[2]));
-    if (partita === null) {
+    if (partita === null || partita.giocatore_id !== giocatore.id) {
       inviaJson(risposta, 404, { errore: 'Partita inesistente' });
     } else if (metodo === 'GET' && pezzi.length === 3) {
       inviaJson(risposta, 200, descrivi(partita));

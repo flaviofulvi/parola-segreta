@@ -1,0 +1,22 @@
+{
+  "name": "parola",
+  "version": "1.0.0",
+  "description": "Gioco in rete: il server sceglie una parola di cinque lettere, i giocatori provano a indovinarla.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flaviofulvi/parola-segreta.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/flaviofulvi/parola-segreta/issues"
+  },
+  "homepage": "https://github.com/flaviofulvi/parola-segreta#readme",
+  "dependencies": {
+    "ws": "^8.22.1"
+  }
+}

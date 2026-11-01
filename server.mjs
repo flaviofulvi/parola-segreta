@@ -6,6 +6,7 @@ import {
   apriSessione, giocatoreDellaSessione, classifica
 } from './archivio.mjs';
 import { leggiCorpo } from './corpo.mjs';
+import { WebSocketServer } from 'ws';
 
 const porta = process.env.PORTA;
 
@@ -42,7 +43,13 @@ function accesso(richiesta, risposta) {
   });
 }
 
-function nuovoTentativo(richiesta, risposta, partita) {
+function avvisaTutti(messaggio) {
+  for (const connessione of canale.clients) {
+    connessione.send(JSON.stringify(messaggio));
+  }
+}
+
+function nuovoTentativo(richiesta, risposta, partita, giocatore) {
   leggiCorpo(richiesta, function (dati) {
     const errore = controlla(dati.parola);
     if (errore !== '') {
@@ -52,7 +59,11 @@ function nuovoTentativo(richiesta, risposta, partita) {
     } else if (!parolaEsiste(dati.parola)) {
       inviaJson(risposta, 400, { errore: 'Parola non in elenco' });
     } else {
-      inviaJson(risposta, 201, aggiungiTentativo(partita, dati.parola));
+      const tentativo = aggiungiTentativo(partita, dati.parola);
+      inviaJson(risposta, 201, tentativo);
+      if (tentativo.esito === '=====') {
+        avvisaTutti({ tipo: 'vittoria', nome: giocatore.nome, tentativi: partita.tentativi.length + 1 });
+      }
     }
   });
 }
@@ -91,7 +102,7 @@ function rispondi(richiesta, risposta) {
     } else if (metodo === 'GET' && pezzi.length === 3) {
       inviaJson(risposta, 200, descrivi(partita));
     } else if (metodo === 'POST' && pezzi.length === 4 && pezzi[3] === 'tentativi') {
-      nuovoTentativo(richiesta, risposta, partita);
+      nuovoTentativo(richiesta, risposta, partita, giocatore);
     } else {
       inviaJson(risposta, 404, { errore: 'Indirizzo sconosciuto' });
     }
@@ -101,5 +112,11 @@ function rispondi(richiesta, risposta) {
 }
 
 const server = http.createServer(rispondi);
+const canale = new WebSocketServer({ server: server });
+
+canale.on('connection', function (connessione) {
+  console.log('Canale aperto. Collegati:', canale.clients.size);
+});
+
 server.listen(porta);
 console.log('Server in ascolto sulla porta', porta);

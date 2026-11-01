@@ -37,6 +37,7 @@ function accesso(richiesta, risposta) {
     } else {
       const nome = dati.nome.trim();
       const codice = apriSessione(nome);
+      avvisaTutti({ tipo: 'ingresso', nome: nome });
       risposta.setHeader('Set-Cookie', 'sessione=' + codice + '; HttpOnly');
       inviaJson(risposta, 201, { nome: nome });
     }
@@ -61,6 +62,7 @@ function nuovoTentativo(richiesta, risposta, partita, giocatore) {
     } else {
       const tentativo = aggiungiTentativo(partita, dati.parola);
       inviaJson(risposta, 201, tentativo);
+      avvisaTutti({ tipo: 'tentativo', nome: giocatore.nome, esito: tentativo.esito });
       if (tentativo.esito === '=====') {
         avvisaTutti({ tipo: 'vittoria', nome: giocatore.nome, tentativi: partita.tentativi.length + 1 });
       }
@@ -115,7 +117,11 @@ const server = http.createServer(rispondi);
 const canale = new WebSocketServer({ server: server });
 
 canale.on('connection', function (connessione) {
-  console.log('Canale aperto. Collegati:', canale.clients.size);
+  avvisaTutti({ tipo: 'presenti', quanti: canale.clients.size });
+
+  connessione.on('close', function () {
+    avvisaTutti({ tipo: 'presenti', quanti: canale.clients.size });
+  });
 });
 
 server.listen(porta);
